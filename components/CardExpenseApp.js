@@ -63,7 +63,6 @@ export default function CardExpenseApp({ supabase }) {
   const [editingBudget, setEditingBudget] = useState(false);
   const [budgetDraft, setBudgetDraft] = useState("");
 
-  // Set default date when viewing month changes
   useEffect(() => {
     const todayMonth = getCurrentMonth();
     if (viewingMonth === todayMonth) {
@@ -75,7 +74,6 @@ export default function CardExpenseApp({ supabase }) {
     }
   }, [viewingMonth]);
 
-  // Initial load
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -197,12 +195,10 @@ export default function CardExpenseApp({ supabase }) {
     if (e.key === "Enter") addExpense();
   };
 
-  // Filter & sort
   const monthExpenses = expenses
     .filter((e) => getMonth(e.date) === viewingMonth)
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  // Category totals
   const catTotals = {};
   CATEGORIES.forEach((c) => (catTotals[c] = 0));
   let totalAll = 0, totalExcl = 0;
@@ -212,7 +208,6 @@ export default function CardExpenseApp({ supabase }) {
     if (!VEHICLE_CATS.has(e.category)) totalExcl += e.amount;
   });
 
-  // Budget calcs
   const daysInMonth = getDaysInMonth(viewingMonth);
   const daysPassed = getDaysPassed(viewingMonth);
   const dailyBudget = budget / daysInMonth;
@@ -229,7 +224,6 @@ export default function CardExpenseApp({ supabase }) {
   if (usageRatio > timeRatio * 1.1) progressClass = "bad";
   else if (usageRatio > timeRatio) progressClass = "warn";
 
-  // All months
   const allMonthsSet = new Set(expenses.map((e) => getMonth(e.date)));
   allMonthsSet.add(getCurrentMonth());
   allMonthsSet.add(viewingMonth);
@@ -288,18 +282,18 @@ export default function CardExpenseApp({ supabase }) {
           </div>
           <div className="progress-labels">
             <span>0원</span>
-            <span>월 한도 {formatMoney(budget)}원 ({(usageRatio * 100).toFixed(1)}% 사용)</span>
+            <span className="prog-mid">월 한도 {formatMoney(budget)}원 ({(usageRatio * 100).toFixed(1)}%)</span>
             <span>{formatMoney(budget)}원</span>
           </div>
           {isCurrent && daysPassed > 0 && (
             <div className="forecast-row">
-              <span className="forecast-label">이 페이스대로 월말까지 사용 예상</span>
+              <span className="forecast-label">이 페이스대로 월말까지 예상</span>
               <span className="forecast-right">
                 <span className="forecast-value">₩{formatMoney(forecast)}</span>
                 <span className={`forecast-status ${forecastOverBudget ? "tag-red" : "tag-green"}`}>
                   {forecastOverBudget
-                    ? `한도 ${formatMoney(forecast - budget)}원 초과 예상`
-                    : `한도 ${formatMoney(budget - forecast)}원 여유 예상`}
+                    ? `${formatMoney(forecast - budget)}원 초과 예상`
+                    : `${formatMoney(budget - forecast)}원 여유 예상`}
                 </span>
               </span>
             </div>
@@ -309,7 +303,7 @@ export default function CardExpenseApp({ supabase }) {
           </div>
         </section>
 
-        {/* Budget setting */}
+        {/* Budget */}
         <section className="card budget-card">
           <span className="budget-label">월 한도</span>
           {editingBudget ? (
@@ -370,16 +364,18 @@ export default function CardExpenseApp({ supabase }) {
             <h2>빠른 추가</h2>
           </div>
           <div className="add-form">
-            <input
-              type="date"
-              value={dateInput}
-              onChange={(e) => setDateInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            <select value={catInput} onChange={(e) => setCatInput(e.target.value)}>
-              <option value="">카테고리</option>
-              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <div className="row-2">
+              <input
+                type="date"
+                value={dateInput}
+                onChange={(e) => setDateInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+              <select value={catInput} onChange={(e) => setCatInput(e.target.value)}>
+                <option value="">카테고리 선택</option>
+                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
             <input
               type="text"
               value={amountInput}
@@ -419,49 +415,77 @@ export default function CardExpenseApp({ supabase }) {
           ) : monthExpenses.length === 0 ? (
             <div className="empty">이 달엔 아직 사용 기록이 없어요</div>
           ) : (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th style={{ width: 46 }}>NO.</th>
-                    <th style={{ width: 80 }}>날짜</th>
-                    <th style={{ width: 90 }}>카테고리</th>
-                    <th className="right" style={{ width: 110 }}>금액</th>
-                    <th>상호 / 비고</th>
-                    <th className="center" style={{ width: 50 }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {monthExpenses.map((e, idx) => (
-                    <tr key={e.id}>
-                      <td className="cell-num">{idx + 1}</td>
-                      <td className="cell-date">{formatDateDisplay(e.date)}</td>
-                      <td>
-                        <span className={`cell-cat cat-${e.category}`}>
-                          {e.category}
-                        </span>
-                      </td>
-                      <td className="cell-amount right">{formatMoney(e.amount)}</td>
-                      <td className="cell-note">
-                        <input
-                          type="text"
-                          defaultValue={e.note || ""}
-                          onBlur={(ev) => updateNote(e.id, ev.target.value)}
-                          placeholder="—"
-                        />
-                      </td>
-                      <td className="center">
-                        <button
-                          className="del-btn"
-                          onClick={() => deleteExpense(e.id)}
-                          title="삭제"
-                        >×</button>
-                      </td>
+            <>
+              {/* Desktop table */}
+              <div className="table-wrap desktop-only">
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{ width: 46 }}>NO.</th>
+                      <th style={{ width: 80 }}>날짜</th>
+                      <th style={{ width: 90 }}>카테고리</th>
+                      <th className="right" style={{ width: 110 }}>금액</th>
+                      <th>상호 / 비고</th>
+                      <th className="center" style={{ width: 50 }}></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {monthExpenses.map((e, idx) => (
+                      <tr key={e.id}>
+                        <td className="cell-num">{idx + 1}</td>
+                        <td className="cell-date">{formatDateDisplay(e.date)}</td>
+                        <td>
+                          <span className={`cell-cat cat-${e.category}`}>
+                            {e.category}
+                          </span>
+                        </td>
+                        <td className="cell-amount right">{formatMoney(e.amount)}</td>
+                        <td className="cell-note">
+                          <input
+                            type="text"
+                            defaultValue={e.note || ""}
+                            onBlur={(ev) => updateNote(e.id, ev.target.value)}
+                            placeholder="—"
+                          />
+                        </td>
+                        <td className="center">
+                          <button
+                            className="del-btn"
+                            onClick={() => deleteExpense(e.id)}
+                            title="삭제"
+                          >×</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile card list */}
+              <div className="mobile-list mobile-only">
+                {monthExpenses.map((e, idx) => (
+                  <div key={e.id} className="exp-card">
+                    <div className="exp-top">
+                      <span className={`cell-cat cat-${e.category}`}>{e.category}</span>
+                      <span className="exp-date">{formatDateDisplay(e.date)}</span>
+                      <span className="exp-amount">₩{formatMoney(e.amount)}</span>
+                      <button
+                        className="del-btn"
+                        onClick={() => deleteExpense(e.id)}
+                        title="삭제"
+                      >×</button>
+                    </div>
+                    <input
+                      type="text"
+                      className="exp-note"
+                      defaultValue={e.note || ""}
+                      onBlur={(ev) => updateNote(e.id, ev.target.value)}
+                      placeholder="상호/비고 추가..."
+                    />
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </section>
 
@@ -485,13 +509,18 @@ export default function CardExpenseApp({ supabase }) {
       </div>
 
       <style jsx>{`
-        .page { min-height: 100vh; padding: 28px 18px 60px; }
+        .page {
+          min-height: 100vh;
+          padding: 28px 18px 60px;
+          overflow-x: hidden;
+        }
         .container {
           max-width: 1100px;
           margin: 0 auto;
           display: flex;
           flex-direction: column;
           gap: 16px;
+          width: 100%;
         }
 
         .header {
@@ -560,13 +589,16 @@ export default function CardExpenseApp({ supabase }) {
         }
         .hero-vs-row {
           display: flex; justify-content: space-between; align-items: baseline;
+          gap: 8px;
         }
         .hero-vs-value {
           font-weight: 700; font-variant-numeric: tabular-nums; color: #0f172a;
+          white-space: nowrap;
         }
         .hero-diff {
           font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums;
           display: inline-flex; align-items: center;
+          white-space: nowrap;
         }
         .hero-diff.good { color: #047857; }
         .hero-diff.bad { color: #b91c1c; }
@@ -590,8 +622,9 @@ export default function CardExpenseApp({ supabase }) {
         .progress-labels {
           display: flex; justify-content: space-between;
           font-size: 11px; color: #94a3b8; margin-top: 6px;
-          font-variant-numeric: tabular-nums;
+          font-variant-numeric: tabular-nums; gap: 8px;
         }
+        .prog-mid { text-align: center; }
         .day-info {
           margin-top: 10px; font-size: 12px; color: #94a3b8; text-align: right;
         }
@@ -601,7 +634,7 @@ export default function CardExpenseApp({ supabase }) {
           align-items: center; font-size: 13px; flex-wrap: wrap; gap: 8px;
         }
         .forecast-label { color: #64748b; }
-        .forecast-right { display: flex; align-items: center; gap: 8px; }
+        .forecast-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
         .forecast-value {
           font-weight: 800; color: #0f172a;
           font-variant-numeric: tabular-nums; font-size: 16px;
@@ -674,16 +707,19 @@ export default function CardExpenseApp({ supabase }) {
         }
         .cat-total-value.orange { color: #ea580c; }
 
-        /* Add form */
+        /* Add form - desktop */
         .add-form {
           display: grid;
           grid-template-columns: 130px 110px 1fr 1.3fr auto;
           gap: 10px;
+          align-items: stretch;
         }
+        .add-form .row-2 { display: contents; }
         .add-form input, .add-form select {
           background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
           padding: 12px 14px; font-size: 14px; color: #0f172a;
           outline: none; transition: all 0.15s;
+          width: 100%;
         }
         .add-form input::placeholder { color: #94a3b8; }
         .add-form input:focus, .add-form select:focus {
@@ -707,9 +743,10 @@ export default function CardExpenseApp({ supabase }) {
           margin-top: 10px; font-size: 12px; color: #94a3b8; text-align: right;
         }
 
-        /* Table */
+        /* Desktop table */
         .table-wrap {
           overflow-x: auto; margin: 0 -24px; padding: 0 24px;
+          max-width: 100%;
         }
         table {
           width: 100%; border-collapse: collapse; min-width: 660px;
@@ -758,13 +795,67 @@ export default function CardExpenseApp({ supabase }) {
         }
         .del-btn {
           background: transparent; border: 1px solid #e2e8f0;
-          color: #64748b; width: 28px; height: 28px;
-          border-radius: 6px; cursor: pointer; font-size: 16px;
+          color: #64748b; width: 32px; height: 32px;
+          border-radius: 6px; cursor: pointer; font-size: 18px;
           line-height: 1; transition: all 0.15s;
+          flex-shrink: 0;
         }
         .del-btn:hover {
           background: #fef2f2; color: #dc2626; border-color: #fecaca;
         }
+
+        /* Mobile card list */
+        .mobile-list { display: none; }
+        .exp-card {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 12px 14px;
+          margin-bottom: 8px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .exp-card:last-child { margin-bottom: 0; }
+        .exp-top {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: nowrap;
+        }
+        .exp-date {
+          color: #475569;
+          font-size: 13px;
+          font-variant-numeric: tabular-nums;
+          flex-shrink: 0;
+        }
+        .exp-amount {
+          margin-left: auto;
+          font-size: 16px;
+          font-weight: 800;
+          color: #0f172a;
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+        }
+        .exp-note {
+          background: white;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          padding: 8px 10px;
+          font-size: 13px;
+          color: #475569;
+          outline: none;
+          width: 100%;
+          transition: all 0.15s;
+        }
+        .exp-note:focus {
+          border-color: #fb923c;
+          box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.12);
+        }
+        .exp-note::placeholder { color: #94a3b8; }
+
+        .desktop-only { display: block; }
+        .mobile-only { display: none; }
 
         .empty {
           text-align: center; padding: 40px 20px;
@@ -808,23 +899,65 @@ export default function CardExpenseApp({ supabase }) {
         :global(.cat-기타) { background: #f8fafc; color: #475569; }
 
         @media (max-width: 720px) {
-          .page { padding: 18px 12px 40px; }
+          .page { padding: 16px 12px 40px; }
           .container { gap: 12px; }
-          .card { padding: 18px; border-radius: 14px; }
-          .hero-card { padding: 20px; border-radius: 14px; }
+          .card { padding: 16px; border-radius: 14px; }
+
+          .header { padding: 2px; }
+          .brand { font-size: 22px; }
+          .brand-sub { font-size: 12px; }
+
+          .hero-card { padding: 18px; border-radius: 14px; }
           .hero-row { grid-template-columns: 1fr; gap: 14px; }
           .hero-vs {
             border-left: none; border-top: 1px solid #e2e8f0;
             padding-left: 0; padding-top: 14px;
           }
           .hero-amount { font-size: 28px; }
-          .add-form { grid-template-columns: 1fr 1fr; }
-          .add-form .add-btn { grid-column: 1 / -1; padding: 12px; }
-          .add-form input, .add-form select { padding: 12px 14px; font-size: 15px; }
-          .table-wrap { margin: 0 -18px; padding: 0 18px; }
-          th, td { padding: 10px 8px; font-size: 13px; }
-          .nav-btn { padding: 8px 12px; font-size: 13px; }
-          .cat-grid { grid-template-columns: repeat(2, 1fr); }
+          .progress-labels { font-size: 10px; }
+          .prog-mid { display: none; }
+          .forecast-row { flex-direction: column; align-items: flex-start; }
+          .forecast-right { justify-content: flex-start; }
+
+          .budget-card { padding: 14px 16px; flex-wrap: wrap; }
+          .budget-amount { font-size: 17px; }
+          .budget-input { width: 110px; }
+
+          .cat-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+          .cat-cell { padding: 12px; }
+          .cat-amount { font-size: 15px; }
+          .cat-totals { gap: 16px; }
+          .cat-total-value { font-size: 16px; }
+
+          /* Add form mobile - stacked */
+          .add-form {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+          .add-form .row-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+          }
+          .add-form input, .add-form select {
+            padding: 14px;
+            font-size: 16px; /* prevents iOS zoom on focus */
+          }
+          .add-form .add-btn {
+            padding: 14px;
+            font-size: 15px;
+          }
+          .add-hint { text-align: center; }
+
+          /* Hide desktop table, show mobile list */
+          .desktop-only { display: none; }
+          .mobile-only { display: block; }
+          .mobile-list { display: block; }
+
+          .month-nav { gap: 6px; padding: 4px; }
+          .nav-btn { padding: 10px 12px; font-size: 13px; }
+          .month-select { padding: 10px 12px; font-size: 13px; min-width: 110px; }
         }
       `}</style>
     </div>
