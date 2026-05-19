@@ -78,7 +78,7 @@ export default function CardExpenseApp({ supabase }) {
     let cancelled = false;
     (async () => {
       const [expRes, setRes] = await Promise.all([
-        supabase.from("card_expenses").select("*").order("date", { ascending: true }),
+        supabase.from("card_expenses").select("*").order("date", { ascending: true }).order("created_at", { ascending: true }),
         supabase.from("card_settings").select("*").eq("key", "monthly_budget").maybeSingle(),
       ]);
       if (cancelled) return;
@@ -197,7 +197,10 @@ export default function CardExpenseApp({ supabase }) {
 
   const monthExpenses = expenses
     .filter((e) => getMonth(e.date) === viewingMonth)
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return (a.created_at || "").localeCompare(b.created_at || "");
+    });
 
   const catTotals = {};
   CATEGORIES.forEach((c) => (catTotals[c] = 0));
