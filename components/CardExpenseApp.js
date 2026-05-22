@@ -259,6 +259,7 @@ export default function CardExpenseApp({ supabase }) {
               <div className="hero-current">현재 사용액</div>
               <div className="hero-amount">
                 <span className="won">₩</span>{formatMoney(currentSpend)}
+                <span className="hero-count">({monthExpenses.length}건)</span>
               </div>
             </div>
             <div className="hero-remain">
@@ -592,6 +593,15 @@ export default function CardExpenseApp({ supabase }) {
           font-variant-numeric: tabular-nums; line-height: 1.1;
         }
         .hero-amount .won { font-size: 20px; margin-right: 2px; }
+        .hero-count {
+          font-size: 14px;
+          font-weight: 600;
+          color: #0f172a;
+          margin-left: 8px;
+          letter-spacing: 0;
+          vertical-align: middle;
+          font-variant-numeric: tabular-nums;
+        }
         .hero-remain { text-align: center; }
         .hero-remain-label {
           font-size: 13px; color: #dc2626; font-weight: 600; margin-bottom: 4px;
@@ -902,89 +912,4 @@ export default function CardExpenseApp({ supabase }) {
           cursor: pointer; outline: none; min-width: 140px;
         }
 
-        .footer-note {
-          text-align: center; margin-top: 6px; padding: 8px;
-          font-size: 12px; color: #94a3b8;
-        }
-
-        /* Category colors */
-        :global(.cat-점심) { background: #fff7ed; color: #c2410c; }
-        :global(.cat-저녁) { background: #fef2f2; color: #b91c1c; }
-        :global(.cat-커피) { background: #f5f3ff; color: #6d28d9; }
-        :global(.cat-주유) { background: #ecfeff; color: #0e7490; }
-        :global(.cat-하이패스) { background: #eff6ff; color: #1d4ed8; }
-        :global(.cat-주차) { background: #f0fdf4; color: #15803d; }
-        :global(.cat-세차) { background: #fdf4ff; color: #a21caf; }
-        :global(.cat-기타) { background: #f8fafc; color: #475569; }
-
-        @media (max-width: 720px) {
-          .page { padding: 16px 12px 40px; }
-          .container { gap: 12px; }
-          .card { padding: 16px; border-radius: 14px; }
-
-          .header { padding: 2px; }
-          .brand { font-size: 22px; }
-          .brand-sub { font-size: 12px; }
-
-          .hero-card { padding: 18px; border-radius: 14px; }
-          .hero-row { grid-template-columns: 1fr; gap: 14px; }
-          .hero-vs {
-            border-left: none; border-top: 1px solid #e2e8f0;
-            padding-left: 0; padding-top: 14px;
-          }
-          .hero-amount { font-size: 26px; }
-          .hero-remain-amount { font-size: 26px; }
-          .hero-remain {
-            text-align: left;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 14px;
-          }
-          .progress-labels { font-size: 10px; }
-          .prog-mid { display: none; }
-          .forecast-row { flex-direction: column; align-items: flex-start; }
-          .forecast-right { justify-content: flex-start; }
-
-          .budget-card { padding: 14px 16px; flex-wrap: wrap; }
-          .budget-amount { font-size: 17px; }
-          .budget-input { width: 110px; }
-
-          .cat-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-          .cat-cell { padding: 12px; }
-          .cat-amount { font-size: 15px; }
-          .cat-totals { gap: 16px; }
-          .cat-total-value { font-size: 16px; }
-
-          /* Add form mobile - stacked */
-          .add-form {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-          }
-          .add-form .row-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-          }
-          .add-form input, .add-form select {
-            padding: 14px;
-            font-size: 16px; /* prevents iOS zoom on focus */
-          }
-          .add-form .add-btn {
-            padding: 14px;
-            font-size: 15px;
-          }
-          .add-hint { text-align: center; }
-
-          /* Hide desktop table, show mobile list */
-          .desktop-only { display: none; }
-          .mobile-only { display: block; }
-          .mobile-list { display: block; }
-
-          .month-nav { gap: 6px; padding: 4px; }
-          .nav-btn { padding: 10px 12px; font-size: 13px; }
-          .month-select { padding: 10px 12px; font-size: 13px; min-width: 110px; }
-        }
-      `}</style>
-    </div>
-  );
-}
+        .footer-
