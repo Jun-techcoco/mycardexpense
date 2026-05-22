@@ -261,6 +261,12 @@ export default function CardExpenseApp({ supabase }) {
                 <span className="won">₩</span>{formatMoney(currentSpend)}
               </div>
             </div>
+            <div className="hero-remain">
+              <div className="hero-remain-label">남은 금액</div>
+              <div className="hero-remain-amount">
+                <span className="won">₩</span>{formatMoney(budget - currentSpend)}
+              </div>
+            </div>
             <div className="hero-vs">
               <div className="hero-vs-row">
                 <span>오늘까지 정상 금액</span>
@@ -576,15 +582,25 @@ export default function CardExpenseApp({ supabase }) {
           box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.04);
         }
         .hero-row {
-          display: grid; grid-template-columns: 1.4fr 1fr;
+          display: grid; grid-template-columns: 1fr 1fr 1fr;
           gap: 20px; margin: 14px 0 18px;
+          align-items: center;
         }
         .hero-current { font-size: 13px; color: #64748b; margin-bottom: 4px; }
         .hero-amount {
-          font-size: 34px; font-weight: 800; letter-spacing: -1px;
+          font-size: 30px; font-weight: 800; letter-spacing: -0.6px;
           font-variant-numeric: tabular-nums; line-height: 1.1;
         }
-        .hero-amount .won { font-size: 22px; margin-right: 2px; }
+        .hero-amount .won { font-size: 20px; margin-right: 2px; }
+        .hero-remain { text-align: center; }
+        .hero-remain-label {
+          font-size: 13px; color: #dc2626; font-weight: 600; margin-bottom: 4px;
+        }
+        .hero-remain-amount {
+          font-size: 30px; font-weight: 800; color: #dc2626;
+          letter-spacing: -0.6px; font-variant-numeric: tabular-nums; line-height: 1.1;
+        }
+        .hero-remain-amount .won { font-size: 20px; margin-right: 2px; }
         .hero-vs {
           display: flex; flex-direction: column; gap: 6px;
           font-size: 13px; color: #64748b;
@@ -916,7 +932,13 @@ export default function CardExpenseApp({ supabase }) {
             border-left: none; border-top: 1px solid #e2e8f0;
             padding-left: 0; padding-top: 14px;
           }
-          .hero-amount { font-size: 28px; }
+          .hero-amount { font-size: 26px; }
+          .hero-remain-amount { font-size: 26px; }
+          .hero-remain {
+            text-align: left;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 14px;
+          }
           .progress-labels { font-size: 10px; }
           .prog-mid { display: none; }
           .forecast-row { flex-direction: column; align-items: flex-start; }
