@@ -63,6 +63,13 @@ export default function CardExpenseApp({ supabase }) {
   const [editingBudget, setEditingBudget] = useState(false);
   const [budgetDraft, setBudgetDraft] = useState("");
 
+  // 수정 모드 상태
+  const [editingId, setEditingId] = useState(null);
+  const [editDate, setEditDate] = useState("");
+  const [editCat, setEditCat] = useState("");
+  const [editAmount, setEditAmount] = useState("");
+  const [editNote, setEditNote] = useState("");
+
   useEffect(() => {
     const todayMonth = getCurrentMonth();
     if (viewingMonth === todayMonth) {
@@ -152,6 +159,63 @@ export default function CardExpenseApp({ supabase }) {
     if (error) console.error(error);
   };
 
+  // 수정 시작
+  const startEdit = (exp) => {
+    setEditingId(exp.id);
+    setEditDate(exp.date);
+    setEditCat(exp.category);
+    setEditAmount(formatMoney(exp.amount));
+    setEditNote(exp.note || "");
+  };
+
+  // 수정 취소
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditDate("");
+    setEditCat("");
+    setEditAmount("");
+    setEditNote("");
+  };
+
+  // 수정 저장
+  const saveEdit = async () => {
+    if (!editDate) { alert("날짜를 선택해주세요"); return; }
+    if (!editCat) { alert("카테고리를 선택해주세요"); return; }
+    const amountRaw = editAmount.replace(/[^0-9]/g, "");
+    const amount = parseInt(amountRaw);
+    if (!amount) { alert("금액을 입력해주세요"); return; }
+
+    const note = editNote.trim() || null;
+    const id = editingId;
+    const backup = expenses;
+
+    setExpenses((prev) =>
+      prev.map((e) =>
+        e.id === id ? { ...e, date: editDate, category: editCat, amount, note } : e
+      )
+    );
+
+    const entryMonth = getMonth(editDate);
+    if (entryMonth !== viewingMonth) setViewingMonth(entryMonth);
+
+    cancelEdit();
+
+    const { error } = await supabase
+      .from("card_expenses")
+      .update({ date: editDate, category: editCat, amount, note })
+      .eq("id", id);
+
+    if (error) {
+      setExpenses(backup);
+      alert("수정 실패: " + error.message);
+    }
+  };
+
+  const handleEditAmountInput = (e) => {
+    const raw = e.target.value.replace(/[^0-9]/g, "");
+    setEditAmount(raw ? parseInt(raw).toLocaleString("ko-KR") : "");
+  };
+
   const startEditBudget = () => {
     setBudgetDraft(budget.toLocaleString("ko-KR"));
     setEditingBudget(true);
@@ -193,6 +257,11 @@ export default function CardExpenseApp({ supabase }) {
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter") addExpense();
+  };
+
+  const handleEditKeyDown = (e) => {
+    if (e.key === "Enter") saveEdit();
+    if (e.key === "Escape") cancelEdit();
   };
 
   const monthExpenses = expenses
@@ -436,36 +505,94 @@ export default function CardExpenseApp({ supabase }) {
                       <th style={{ width: 90 }}>카테고리</th>
                       <th className="right" style={{ width: 110 }}>금액</th>
                       <th>상호 / 비고</th>
-                      <th className="center" style={{ width: 50 }}></th>
+                      <th className="center" style={{ width: 130 }}>관리</th>
                     </tr>
                   </thead>
                   <tbody>
                     {monthExpenses.map((e, idx) => (
-                      <tr key={e.id}>
-                        <td className="cell-num">{idx + 1}</td>
-                        <td className="cell-date">{formatDateDisplay(e.date)}</td>
-                        <td>
-                          <span className={`cell-cat cat-${e.category}`}>
-                            {e.category}
-                          </span>
-                        </td>
-                        <td className="cell-amount right">{formatMoney(e.amount)}</td>
-                        <td className="cell-note">
-                          <input
-                            type="text"
-                            defaultValue={e.note || ""}
-                            onBlur={(ev) => updateNote(e.id, ev.target.value)}
-                            placeholder="—"
-                          />
-                        </td>
-                        <td className="center">
-                          <button
-                            className="del-btn"
-                            onClick={() => deleteExpense(e.id)}
-                            title="삭제"
-                          >×</button>
-                        </td>
-                      </tr>
+                      editingId === e.id ? (
+                        <tr key={e.id} className="row-editing">
+                          <td className="cell-num">{idx + 1}</td>
+                          <td>
+                            <input
+                              type="date"
+                              className="edit-input"
+                              value={editDate}
+                              onChange={(ev) => setEditDate(ev.target.value)}
+                              onKeyDown={handleEditKeyDown}
+                            />
+                          </td>
+                          <td>
+                            <select
+                              className="edit-input"
+                              value={editCat}
+                              onChange={(ev) => setEditCat(ev.target.value)}
+                              onKeyDown={handleEditKeyDown}
+                            >
+                              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                          </td>
+                          <td className="right">
+                            <input
+                              type="text"
+                              className="edit-input edit-amt"
+                              value={editAmount}
+                              onChange={handleEditAmountInput}
+                              onKeyDown={handleEditKeyDown}
+                              inputMode="numeric"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              className="edit-input"
+                              value={editNote}
+                              onChange={(ev) => setEditNote(ev.target.value)}
+                              onKeyDown={handleEditKeyDown}
+                              placeholder="상호/비고"
+                            />
+                          </td>
+                          <td className="center">
+                            <div className="action-buttons">
+                              <button className="btn-save" onClick={saveEdit}>저장</button>
+                              <button className="btn-cancel" onClick={cancelEdit}>취소</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        <tr key={e.id}>
+                          <td className="cell-num">{idx + 1}</td>
+                          <td className="cell-date">{formatDateDisplay(e.date)}</td>
+                          <td>
+                            <span className={`cell-cat cat-${e.category}`}>
+                              {e.category}
+                            </span>
+                          </td>
+                          <td className="cell-amount right">{formatMoney(e.amount)}</td>
+                          <td className="cell-note">
+                            <input
+                              type="text"
+                              defaultValue={e.note || ""}
+                              onBlur={(ev) => updateNote(e.id, ev.target.value)}
+                              placeholder="—"
+                            />
+                          </td>
+                          <td className="center">
+                            <div className="action-buttons">
+                              <button
+                                className="btn-edit"
+                                onClick={() => startEdit(e)}
+                                title="수정"
+                              >수정</button>
+                              <button
+                                className="btn-delete"
+                                onClick={() => deleteExpense(e.id)}
+                                title="삭제"
+                              >삭제</button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
                     ))}
                   </tbody>
                 </table>
@@ -474,25 +601,69 @@ export default function CardExpenseApp({ supabase }) {
               {/* Mobile card list */}
               <div className="mobile-list mobile-only">
                 {monthExpenses.map((e, idx) => (
-                  <div key={e.id} className="exp-card">
-                    <div className="exp-top">
-                      <span className={`cell-cat cat-${e.category}`}>{e.category}</span>
-                      <span className="exp-date">{formatDateDisplay(e.date)}</span>
-                      <span className="exp-amount">₩{formatMoney(e.amount)}</span>
-                      <button
-                        className="del-btn"
-                        onClick={() => deleteExpense(e.id)}
-                        title="삭제"
-                      >×</button>
+                  editingId === e.id ? (
+                    <div key={e.id} className="exp-card exp-card-editing">
+                      <div className="exp-edit-row">
+                        <input
+                          type="date"
+                          className="edit-input"
+                          value={editDate}
+                          onChange={(ev) => setEditDate(ev.target.value)}
+                        />
+                        <select
+                          className="edit-input"
+                          value={editCat}
+                          onChange={(ev) => setEditCat(ev.target.value)}
+                        >
+                          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <input
+                        type="text"
+                        className="edit-input edit-amt"
+                        value={editAmount}
+                        onChange={handleEditAmountInput}
+                        placeholder="금액"
+                        inputMode="numeric"
+                      />
+                      <input
+                        type="text"
+                        className="edit-input"
+                        value={editNote}
+                        onChange={(ev) => setEditNote(ev.target.value)}
+                        placeholder="상호/비고"
+                      />
+                      <div className="action-buttons mobile-buttons">
+                        <button className="btn-save" onClick={saveEdit}>저장</button>
+                        <button className="btn-cancel" onClick={cancelEdit}>취소</button>
+                      </div>
                     </div>
-                    <input
-                      type="text"
-                      className="exp-note"
-                      defaultValue={e.note || ""}
-                      onBlur={(ev) => updateNote(e.id, ev.target.value)}
-                      placeholder="상호/비고 추가..."
-                    />
-                  </div>
+                  ) : (
+                    <div key={e.id} className="exp-card">
+                      <div className="exp-top">
+                        <span className={`cell-cat cat-${e.category}`}>{e.category}</span>
+                        <span className="exp-date">{formatDateDisplay(e.date)}</span>
+                        <span className="exp-amount">₩{formatMoney(e.amount)}</span>
+                      </div>
+                      <input
+                        type="text"
+                        className="exp-note"
+                        defaultValue={e.note || ""}
+                        onBlur={(ev) => updateNote(e.id, ev.target.value)}
+                        placeholder="상호/비고 추가..."
+                      />
+                      <div className="action-buttons mobile-buttons">
+                        <button
+                          className="btn-edit"
+                          onClick={() => startEdit(e)}
+                        >수정</button>
+                        <button
+                          className="btn-delete"
+                          onClick={() => deleteExpense(e.id)}
+                        >삭제</button>
+                      </div>
+                    </div>
+                  )
                 ))}
               </div>
             </>
@@ -797,6 +968,9 @@ export default function CardExpenseApp({ supabase }) {
         td.center { text-align: center; }
         tbody tr:last-child td { border-bottom: none; }
         tbody tr:hover { background: #fafbfc; }
+        tbody tr.row-editing { background: #fefce8; }
+        tbody tr.row-editing:hover { background: #fefce8; }
+        tbody tr.row-editing td { padding: 10px 14px; }
 
         .cell-num {
           color: #94a3b8; font-weight: 600; font-size: 13px;
@@ -822,15 +996,74 @@ export default function CardExpenseApp({ supabase }) {
         .cell-note input:focus {
           background: white; border-color: #cbd5e1; color: #0f172a;
         }
-        .del-btn {
-          background: transparent; border: 1px solid #e2e8f0;
-          color: #64748b; width: 32px; height: 32px;
-          border-radius: 6px; cursor: pointer; font-size: 18px;
-          line-height: 1; transition: all 0.15s;
-          flex-shrink: 0;
+
+        /* 수정/삭제 버튼 */
+        .action-buttons {
+          display: inline-flex;
+          gap: 6px;
+          justify-content: center;
         }
-        .del-btn:hover {
-          background: #fef2f2; color: #dc2626; border-color: #fecaca;
+        .btn-edit, .btn-delete, .btn-save, .btn-cancel {
+          border: none;
+          cursor: pointer;
+          padding: 7px 12px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 700;
+          transition: all 0.15s;
+          font-family: inherit;
+          white-space: nowrap;
+        }
+        .btn-edit {
+          background: #eff6ff;
+          color: #2563eb;
+        }
+        .btn-edit:hover {
+          background: #dbeafe;
+        }
+        .btn-delete {
+          background: #fef2f2;
+          color: #dc2626;
+        }
+        .btn-delete:hover {
+          background: #fee2e2;
+        }
+        .btn-save {
+          background: #fb923c;
+          color: white;
+        }
+        .btn-save:hover {
+          background: #ea580c;
+        }
+        .btn-cancel {
+          background: #f1f5f9;
+          color: #475569;
+        }
+        .btn-cancel:hover {
+          background: #e2e8f0;
+        }
+
+        /* 수정 입력칸 */
+        .edit-input {
+          background: white;
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          padding: 8px 10px;
+          font-size: 13px;
+          color: #0f172a;
+          outline: none;
+          width: 100%;
+          font-family: inherit;
+          transition: all 0.15s;
+        }
+        .edit-input:focus {
+          border-color: #fb923c;
+          box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.15);
+        }
+        .edit-input.edit-amt {
+          text-align: right;
+          font-weight: 700;
+          font-variant-numeric: tabular-nums;
         }
 
         /* Mobile card list */
@@ -846,6 +1079,15 @@ export default function CardExpenseApp({ supabase }) {
           gap: 8px;
         }
         .exp-card:last-child { margin-bottom: 0; }
+        .exp-card-editing {
+          background: #fefce8;
+          border-color: #fde047;
+        }
+        .exp-edit-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+        }
         .exp-top {
           display: flex;
           align-items: center;
@@ -882,6 +1124,19 @@ export default function CardExpenseApp({ supabase }) {
           box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.12);
         }
         .exp-note::placeholder { color: #94a3b8; }
+        .mobile-buttons {
+          display: flex;
+          gap: 8px;
+          margin-top: 4px;
+        }
+        .mobile-buttons .btn-edit,
+        .mobile-buttons .btn-delete,
+        .mobile-buttons .btn-save,
+        .mobile-buttons .btn-cancel {
+          flex: 1;
+          padding: 10px;
+          font-size: 13px;
+        }
 
         .desktop-only { display: block; }
         .mobile-only { display: none; }
@@ -985,6 +1240,12 @@ export default function CardExpenseApp({ supabase }) {
             font-size: 15px;
           }
           .add-hint { text-align: center; }
+
+          /* Edit input mobile */
+          .edit-input {
+            padding: 12px;
+            font-size: 16px; /* prevents iOS zoom */
+          }
 
           /* Hide desktop table, show mobile list */
           .desktop-only { display: none; }
