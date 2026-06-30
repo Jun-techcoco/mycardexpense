@@ -4,34 +4,53 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase";
 import CardExpenseApp from "@/components/CardExpenseApp";
 
-// ⬇️ 본인이 원하는 비밀번호로 바꿔주세요 (다른 앱이랑 다르게 가능)
-const APP_PASSWORD = "8009";
-
-const STORAGE_KEY = "mycardexpense_approved_v1";
-
 export default function Home() {
   const [supabase] = useState(() => createClient());
-  const [approved, setApproved] = useState(null);
+  // undefined = 확인 중, null = 로그아웃 상태, 객체 = 로그인됨
+  const [session, setSession] = useState(undefined);
+  const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setApproved(localStorage.getItem(STORAGE_KEY) === "yes");
-  }, []);
+    let mounted = true;
+    // 이미 로그인돼 있으면 그대로 통과 (= 한 번 인증한 기기는 안 물어봄)
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted) setSession(data.session ?? null);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s ?? null);
+    });
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [supabase]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (pw === APP_PASSWORD) {
-      localStorage.setItem(STORAGE_KEY, "yes");
-      setApproved(true);
-      setError("");
-    } else {
-      setError("비밀번호가 틀려요");
+    setLoading(true);
+    setError("");
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password: pw,
+    });
+    setLoading(false);
+    if (error) {
+      setError("이메일 또는 비밀번호가 맞지 않아요");
       setPw("");
     }
   };
 
-  if (approved === null) {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setEmail("");
+    setPw("");
+  };
+
+  // 확인 중
+  if (session === undefined) {
     return (
       <div style={{
         minHeight: "100vh",
@@ -46,23 +65,34 @@ export default function Home() {
     );
   }
 
-  if (!approved) {
+  // 로그아웃 상태 → 로그인 화면
+  if (!session) {
     return (
       <div className="lock-page">
         <form onSubmit={handleSubmit} className="lock-card">
-          <div className="lock-tag">잠금</div>
+          <div className="lock-tag">로그인</div>
           <h1>법인카드 사용내역</h1>
-          <p className="lock-sub">비밀번호를 입력해주세요</p>
+          <p className="lock-sub">이메일과 비밀번호로 로그인하세요</p>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setError(""); }}
+            placeholder="이메일"
+            autoComplete="username"
+            autoFocus
+          />
           <input
             type="password"
             value={pw}
             onChange={(e) => { setPw(e.target.value); setError(""); }}
             placeholder="비밀번호"
-            autoFocus
+            autoComplete="current-password"
           />
-          <button type="submit" disabled={!pw.trim()}>들어가기</button>
+          <button type="submit" disabled={!email.trim() || !pw.trim() || loading}>
+            {loading ? "로그인 중..." : "로그인"}
+          </button>
           {error && <div className="lock-error">{error}</div>}
-          <p className="lock-help">한 번 입력하면 이 기기에서는 다음부터 자동으로 들어와요</p>
+          <p className="lock-help">한 번 로그인하면 이 기기에서는 다음부터 자동으로 들어와요</p>
         </form>
 
         <style jsx>{`
@@ -135,5 +165,35 @@ export default function Home() {
     );
   }
 
-  return <CardExpenseApp supabase={supabase} />;
+  // 로그인 상태 → 앱 표시 (+ 로그아웃 버튼)
+  return (
+    <>
+      <button className="logout-fab" onClick={handleLogout} title="로그아웃">
+        로그아웃
+      </button>
+      <CardExpenseApp supabase={supabase} />
+      <style jsx>{`
+        .logout-fab {
+          position: fixed;
+          top: 12px;
+          right: 12px;
+          z-index: 9999;
+          background: rgba(255, 255, 255, 0.9);
+          color: #64748b;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          padding: 6px 12px;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          backdrop-filter: blur(4px);
+          transition: all 0.15s;
+        }
+        .logout-fab:hover {
+          color: #ea580c;
+          border-color: #fb923c;
+        }
+      `}</style>
+    </>
+  );
 }
